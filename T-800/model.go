@@ -83,6 +83,7 @@ type model struct {
 	selectedPath  string
 	pkcs11config  pkcs11config
 	keys          []Key
+	selectedKey   Key
 }
 
 func (m model) Init() tea.Cmd {

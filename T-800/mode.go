@@ -15,6 +15,7 @@ const (
 	ENCRYPT                   = 12
 	ENCRYPTION_OPERATION_DONE = 13
 	CHOOSE_MECHANISM          = 14
+	CERT_SELECTED             = 15
 )
 
 type mode struct {
@@ -42,4 +43,5 @@ var modes = map[int]mode{
 	ENCRYPT:                   {modeNum: ENCRYPT, title: "ENCRYPTING"},
 	ENCRYPTION_OPERATION_DONE: {modeNum: ENCRYPTION_OPERATION_DONE, title: "ENCRYPTION OPERATION DONE"},
 	CHOOSE_MECHANISM:          {modeNum: CHOOSE_MECHANISM, title: "Choose a mechanism"},
+	CERT_SELECTED:             {modeNum: CERT_SELECTED},
 }

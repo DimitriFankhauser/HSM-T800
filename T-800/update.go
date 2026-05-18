@@ -128,6 +128,14 @@ func handleEnter(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		}
+	case KEY_SELECTED:
+		// show things that can be done with the selected Key
+		m.selectedKey = m.keys[m.cursor]
+		//TODO: switch to encryption
+		return m, tea.Quit
+
+	case CERT_SELECTED:
+		return m, nil
 
 	}
 	return m, nil

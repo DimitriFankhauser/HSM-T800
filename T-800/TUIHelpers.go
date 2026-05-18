@@ -114,6 +114,7 @@ func UpdateTokens(m model) (tea.Model, tea.Cmd) {
 }
 
 func UpdateSymmetricKeys(m model) (tea.Model, tea.Cmd) {
+	m.mode = modes[KEY_SELECTED]
 	return m, nil
 
 }
@@ -152,7 +153,15 @@ func UpdateAsymmetricKeys(m model) (tea.Model, tea.Cmd) {
 		key := Key{string(id.Value), string(label.Value), keyTypeToString(keyType.Value)}
 		keys = append(keys, key)
 	}
+
+	var convertedKeys = []string{}
+	for _, key := range keys {
+		convertedKeys = append(convertedKeys, key.String())
+
+	}
 	m.keys = keys
+	m.mode = modes[KEY_SELECTED]
+	m.mode.options = convertedKeys
 	return m, nil
 }
 func keyTypeToString(raw []byte) string {
