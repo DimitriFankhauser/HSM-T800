@@ -1,6 +1,7 @@
 package main
 
 import (
+	"charm.land/bubbles/v2/filepicker"
 	"charm.land/bubbles/v2/textinput"
 	_ "charm.land/bubbletea/v2"
 	tea "charm.land/bubbletea/v2"
@@ -20,6 +21,10 @@ type Mode struct {
 	Handler     func(msg tea.Msg, m model) (model, tea.Cmd)
 	ViewHandler func(m model) tea.View
 	Step        int
+	// temporary storage for IMPORT
+	CertPath       string
+	PrivateKeyPath string
+	PublicKeyPath  string
 }
 
 var modes []Mode
@@ -40,12 +45,16 @@ type model struct {
 	pathToSo      string
 	tokenLabel    string
 	pin           string
+	keyLabel      string
 	debuggingMode bool
 	errorMsg      string
 	keyPairs      []crypto11.Signer
 	ctx           *crypto11.Context
 
-	textInput textinput.Model
+	termHeight int
+
+	textInput  textinput.Model
+	filepicker filepicker.Model
 }
 
 func (m model) Init() tea.Cmd {

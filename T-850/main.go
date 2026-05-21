@@ -14,5 +14,7 @@ func main() {
 		fmt.Println(m.pin)
 		fmt.Println(m.tokenLabel)
 		fmt.Println(m.keyPairs)
+		fmt.Println(m.errorMsg)
+
 	}
 }

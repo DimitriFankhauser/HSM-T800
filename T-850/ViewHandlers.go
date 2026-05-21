@@ -8,6 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/ThalesGroup/crypto11"
 )
 
 func HandleViewInit(m model) tea.View {
@@ -65,12 +66,19 @@ func HandleViewInit(m model) tea.View {
 	return tea.NewView(s)
 }
 
+func getKeyLabel(ctx *crypto11.Context, kp crypto11.Signer) string {
+	attr, err := ctx.GetAttribute(kp, crypto11.CkaLabel)
+	if err != nil || attr == nil {
+		return "(unknown)"
+	}
+	return string(attr.Value)
+}
+
 func HandleViewList(m model) tea.View {
 	var s string
-	s = ""
 
-	s += fmt.Sprintf("%-10s %-15s\n", "Key Type", "Key Length")
-	s += fmt.Sprintln(strings.Repeat("-", 25))
+	s += fmt.Sprintf("%-20s %-10s %-15s\n", "Label", "Key Type", "Key Length")
+	s += fmt.Sprintln(strings.Repeat("-", 45))
 
 	for _, kp := range m.keyPairs {
 		pub := kp.Public()
@@ -90,7 +98,8 @@ func HandleViewList(m model) tea.View {
 			keyLength = 0
 		}
 
-		s += fmt.Sprintf("%-10s %d bits\n", keyType, keyLength)
+		label := getKeyLabel(m.ctx, kp)
+		s += fmt.Sprintf("%-20s %-10s %d bits\n", label, keyType, keyLength)
 	}
 	return tea.NewView(s)
 }
@@ -100,7 +109,32 @@ func HandleViewKeyPair(m model) tea.View {
 	return tea.NewView(s)
 }
 func HandleViewImport(m model) tea.View {
-	var s string
-	s = "Not implemented"
-	return tea.NewView(s)
+	if m.modes[IMPORT].Step == 0 {
+		header := "Enter Key Label"
+		var c *tea.Cursor
+		if !m.textInput.VirtualCursor() {
+			c = m.textInput.Cursor()
+			c.Y += lipgloss.Height(header)
+		}
+		parts := []string{header, m.textInput.View()}
+		if m.errorMsg != "" {
+			parts = append(parts, lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Render(m.errorMsg))
+		}
+		return tea.NewView(lipgloss.JoinVertical(lipgloss.Top, parts...))
+	}
+
+	if m.modes[IMPORT].Step == 1 {
+		header := "Select Certificate File"
+		return tea.NewView(lipgloss.JoinVertical(lipgloss.Top, header, m.filepicker.View()))
+	}
+
+	if m.modes[IMPORT].Step == 2 {
+		return tea.NewView(lipgloss.JoinVertical(lipgloss.Top, "Select Private Key File", m.filepicker.View()))
+	}
+
+	if m.modes[IMPORT].Step == 3 {
+		return tea.NewView(lipgloss.JoinVertical(lipgloss.Top, "Select Public Key File", m.filepicker.View()))
+	}
+
+	return tea.NewView("Not implemented")
 }
