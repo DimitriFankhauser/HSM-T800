@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/BurntSushi/toml"
@@ -14,11 +13,6 @@ import (
 )
 
 func encrypt(m model) (tea.Model, tea.Cmd) {
-	if m.selectedPath != "" {
-		exec.Command("bash", "../scripts/encrypt.sh", DUMMY_DRIVERPATH, DUMMY_TOKENLABEL, DUMMY_KEYLABEL, m.selectedPath).Output()
-	} else {
-		panic("no path to encrypt command")
-	}
 	return m, tea.Quit
 }
 

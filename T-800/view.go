@@ -13,11 +13,15 @@ func (m model) View() tea.View {
 	if int(m.mode.modeNum) == int(READ_CONFIG_USER) {
 		return tea.NewView(renderQuestionnaire(m))
 	}
+	if int(m.mode.modeNum) == int(USE_KEY_PROMPT) {
+		header := "Enter a thing you want to encrypt/decrypt/hash"
+		str := lipgloss.JoinVertical(lipgloss.Top, header, m.textInput.View())
+		return tea.NewView(str)
 
-	if int(m.mode.modeNum) == int(READ_CONFIG_FILE) {
+	}
+	if int(m.mode.modeNum) == int(READ_CONFIG_FILE) || int(m.mode.modeNum) == int(USE_KEY_FILE) {
 		return tea.NewView(renderFileView(m))
 	}
-
 	return tea.NewView(renderMenu(m, m.cursor))
 }
 

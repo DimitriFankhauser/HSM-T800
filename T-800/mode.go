@@ -16,6 +16,9 @@ const (
 	ENCRYPTION_OPERATION_DONE = 13
 	CHOOSE_MECHANISM          = 14
 	CERT_SELECTED             = 15
+	USE_KEY                   = 16
+	USE_KEY_PROMPT            = 17
+	USE_KEY_FILE              = 18
 )
 
 type mode struct {
@@ -44,4 +47,7 @@ var modes = map[int]mode{
 	ENCRYPTION_OPERATION_DONE: {modeNum: ENCRYPTION_OPERATION_DONE, title: "ENCRYPTION OPERATION DONE"},
 	CHOOSE_MECHANISM:          {modeNum: CHOOSE_MECHANISM, title: "Choose a mechanism"},
 	CERT_SELECTED:             {modeNum: CERT_SELECTED},
+	USE_KEY:                   {modeNum: USE_KEY, title: "How would you like to use this key", options: []string{"prompt input", "select file"}},
+	USE_KEY_PROMPT:            {modeNum: USE_KEY_PROMPT},
+	USE_KEY_FILE:              {modeNum: USE_KEY_FILE},
 }

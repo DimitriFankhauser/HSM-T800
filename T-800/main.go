@@ -14,5 +14,7 @@ func main() {
 		fmt.Println(m.pkcs11config)
 		fmt.Println(len(m.tokens))
 		fmt.Println(len(m.mode.options))
+		fmt.Println(m.textInput.Value())
+		fmt.Println(m.filepicker.Path)
 	}
 }

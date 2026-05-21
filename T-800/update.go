@@ -21,7 +21,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor++
 			}
 		case "enter":
-			if m.mode.modeNum == READ_CONFIG_FILE || m.mode.modeNum == GET_ENCRYPTABLE_FILE {
+			if m.mode.modeNum == READ_CONFIG_FILE || m.mode.modeNum == GET_ENCRYPTABLE_FILE || m.mode.modeNum == USE_KEY_FILE {
 				break
 			}
 			return handleEnter(m, msg)
@@ -122,7 +122,6 @@ func handleEnter(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case 3:
 			// Select a certificate
 			return UpdateCertificates(m)
-			return m, nil
 		case 4:
 			// use HSM for Keyless work (i.e. Sha256 Digest)
 			return m, nil
@@ -132,11 +131,30 @@ func handleEnter(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// show things that can be done with the selected Key
 		m.selectedKey = m.keys[m.cursor]
 		//TODO: switch to encryption
-		return m, tea.Quit
+		m.mode = modes[USE_KEY]
+		return m, nil
 
 	case CERT_SELECTED:
 		return m, nil
 
+	case USE_KEY:
+		switch m.cursor {
+		case 0:
+			m.mode = modes[USE_KEY_PROMPT]
+		case 1:
+			m.mode = modes[USE_KEY_FILE]
+		}
+		return m, nil
+
+	case USE_KEY_PROMPT:
+		return m, tea.Quit
+	case USE_KEY_FILE:
+		return m, tea.Quit
+
 	}
 	return m, nil
+}
+
+func doNothing(nothing string) {
+
 }
