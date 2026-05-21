@@ -107,9 +107,14 @@ func handleInit(msg tea.Msg, m model) (model, tea.Cmd) {
 					m.textInput.Placeholder = "Enter Key Label"
 					m.textInput.EchoMode = textinput.EchoNormal
 				case 1:
+					m.cursor = 0
 					m.keyPairs = getKeyPairs(m.ctx)
 					m.selectedMode = LIST
 				case 2:
+					m.cursor = 0
+					m.certificates = getCertificates(m.ctx)
+					m.selectedMode = LIST_CERTS
+				case 3:
 					m.selectedMode = CREATE_KEYPAIR
 				}
 				m.modes[INIT].Step = 4
@@ -210,6 +215,7 @@ func handleImport(msg tea.Msg, m model) (model, tea.Cmd) {
 		if err := importKeyPair(m.pathToSo, m.tokenLabel, m.pin, key, id, m.keyLabel); err != nil {
 			m.errorMsg = err.Error()
 		}
+		ImportCert(m.ctx, id, m.modes[IMPORT].CertPath)
 		return m, tea.Quit
 
 	}
@@ -221,5 +227,15 @@ func handleKeyPair(msg tea.Msg, m model) (model, tea.Cmd) {
 }
 
 func handleList(msg tea.Msg, m model) (model, tea.Cmd) {
+	m.modes[LIST].Step++
+	m.modes[LIST].selectedKP = m.keyPairs[m.cursor]
+	return m, nil
+}
+func handleListCerts(msg tea.Msg, m model) (model, tea.Cmd) {
+	m.modes[LIST_CERTS].Step++
+	m.modes[LIST].selectedCert = m.certificates[m.cursor]
+	return m, nil
+}
+func handleQuarkus(msg tea.Msg, m model) (model, tea.Cmd) {
 	return m, tea.Quit
 }

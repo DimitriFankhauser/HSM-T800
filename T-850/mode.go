@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/tls"
+
 	"charm.land/bubbles/v2/filepicker"
 	"charm.land/bubbles/v2/textinput"
 	_ "charm.land/bubbletea/v2"
@@ -9,10 +11,12 @@ import (
 )
 
 const (
-	INIT           = 0
-	IMPORT         = 1
-	LIST           = 2
-	CREATE_KEYPAIR = 3
+	INIT                   = 0
+	IMPORT                 = 1
+	LIST                   = 2
+	LIST_CERTS             = 3
+	CREATE_KEYPAIR         = 4
+	GENERATE_QUARKUS_FILES = 5
 )
 
 type Mode struct {
@@ -21,10 +25,17 @@ type Mode struct {
 	Handler     func(msg tea.Msg, m model) (model, tea.Cmd)
 	ViewHandler func(m model) tea.View
 	Step        int
-	// temporary storage for IMPORT
+
+	// IMPORT
 	CertPath       string
 	PrivateKeyPath string
 	PublicKeyPath  string
+
+	// LIST Mode
+	selectedKP crypto11.Signer
+
+	// LIST_CERT
+	selectedCert tls.Certificate
 }
 
 var modes []Mode
@@ -34,7 +45,9 @@ func init() {
 		{ModeNumber: INIT, Name: "Initial Mode", Handler: handleInit, ViewHandler: HandleViewInit, Step: 0},
 		{ModeNumber: IMPORT, Name: "import a TLS-Certificate and Keypair into my HSM", Handler: handleImport, ViewHandler: HandleViewImport, Step: 0},
 		{ModeNumber: LIST, Name: "List all Keypairs", Handler: handleList, ViewHandler: HandleViewList, Step: 0},
+		{ModeNumber: LIST_CERTS, Name: "List all Certificates", Handler: handleListCerts, ViewHandler: HandleViewListCerts, Step: 0},
 		{ModeNumber: CREATE_KEYPAIR, Name: "create a key pair", Handler: handleKeyPair, ViewHandler: HandleViewKeyPair, Step: 0},
+		{ModeNumber: GENERATE_QUARKUS_FILES, Name: "Generate Files for Quarkus", Handler: handleQuarkus, ViewHandler: HandleViewQuarkus, Step: 0},
 	}
 }
 
@@ -49,6 +62,7 @@ type model struct {
 	debuggingMode bool
 	errorMsg      string
 	keyPairs      []crypto11.Signer
+	certificates  []tls.Certificate
 	ctx           *crypto11.Context
 
 	termHeight int

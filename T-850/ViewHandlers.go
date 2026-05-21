@@ -11,6 +11,8 @@ import (
 	"github.com/ThalesGroup/crypto11"
 )
 
+const certDateFormat = "2006-01-02"
+
 func HandleViewInit(m model) tea.View {
 	if m.modes[INIT].Step == 0 {
 		header := "Enter the Path to your PKCS11-Library"
@@ -80,7 +82,11 @@ func HandleViewList(m model) tea.View {
 	s += fmt.Sprintf("%-20s %-10s %-15s\n", "Label", "Key Type", "Key Length")
 	s += fmt.Sprintln(strings.Repeat("-", 45))
 
-	for _, kp := range m.keyPairs {
+	for i, kp := range m.keyPairs {
+		cur := " "
+		if m.cursor == i {
+			cur = "*"
+		}
 		pub := kp.Public()
 
 		var keyType string
@@ -99,7 +105,42 @@ func HandleViewList(m model) tea.View {
 		}
 
 		label := getKeyLabel(m.ctx, kp)
-		s += fmt.Sprintf("%-20s %-10s %d bits\n", label, keyType, keyLength)
+		s += fmt.Sprintf("%-2s %-20s %-10s %d bits\n", cur, label, keyType, keyLength)
+	}
+	if m.modes[LIST].selectedKP == nil {
+		s += fmt.Sprintf("Press 'enter' to select a KeyPair")
+	} else if m.modes[LIST].selectedKP != nil {
+		red := lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
+		s += fmt.Sprintf("%s to generate files for Quarkus \n", red.Render("[Q]"))
+		s += fmt.Sprintf("%s to delete the KeyPair \n", red.Render("[D]"))
+		s += fmt.Sprintf("%s to export the Public Key \n", red.Render("[E]"))
+	}
+
+	return tea.NewView(s)
+}
+func HandleViewListCerts(m model) tea.View {
+	var s string
+
+	s += fmt.Sprintf("%-20s %-30s %-30s %-12s\n", "Key Label", "Subject", "Issuer", "Expires")
+	s += fmt.Sprintln(strings.Repeat("-", 92))
+
+	for i, tlsCert := range m.certificates {
+		cur := " "
+		if m.cursor == i {
+			cur = "*"
+		}
+		leaf := tlsCert.Leaf
+		if leaf == nil {
+			continue
+		}
+		keyLabel := "(unknown)"
+		if signer, ok := tlsCert.PrivateKey.(crypto11.Signer); ok {
+			keyLabel = getKeyLabel(m.ctx, signer)
+		}
+		subject := leaf.Subject.CommonName
+		issuer := leaf.Issuer.CommonName
+		expiry := leaf.NotAfter.Format(certDateFormat)
+		s += fmt.Sprintf("%-2s %-20s %-30s %-30s %-12s\n", cur, keyLabel, subject, issuer, expiry)
 	}
 	return tea.NewView(s)
 }
@@ -137,4 +178,9 @@ func HandleViewImport(m model) tea.View {
 	}
 
 	return tea.NewView("Not implemented")
+}
+func HandleViewQuarkus(m model) tea.View {
+	var s string
+	s = "Not implemented"
+	return tea.NewView(s)
 }

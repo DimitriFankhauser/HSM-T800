@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rsa"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/asn1"
 	"encoding/pem"
@@ -33,6 +34,25 @@ func checkFileExists(filePath string) bool {
 	return true
 }
 
+func deleteKeyPair(ctx *crypto11.Context, kp crypto11.Signer) {
+	kp.Delete()
+}
+
+func exportPublicKey(ctx *crypto11.Context, kp crypto11.Signer) {
+	f, err := os.Create("public.pem")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+	publicKey := kp.Public()
+	pkixBytes, _ := x509.MarshalPKIXPublicKey(publicKey)
+
+	pem.Encode(f, &pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: pkixBytes,
+	})
+}
+
 func initializeCtx(m *model) {
 	ctx, err := crypto11.Configure(&crypto11.Config{
 		Path:       m.pathToSo,
@@ -58,6 +78,17 @@ func getKeyPairs(ctx *crypto11.Context) []crypto11.Signer {
 		return keyPairs
 	}
 
+}
+
+func getCertificates(ctx *crypto11.Context) []tls.Certificate {
+	if ctx == nil {
+		return nil
+	}
+	certs, err := ctx.FindAllPairedCertificates()
+	if err != nil {
+		log.Fatalf("FindAllPairedCertificates: %v", err)
+	}
+	return certs
 }
 
 func LoadX509KeyPair(certFile, keyFile string) (*x509.Certificate, interface{}) {
@@ -98,11 +129,24 @@ func LoadX509KeyPair(certFile, keyFile string) (*x509.Certificate, interface{}) 
 	return crt, key
 }
 
-func ImportCert(ctx *crypto11.Context, id []byte, cert *x509.Certificate) {
+func ImportCert(ctx *crypto11.Context, id []byte, certPath string) {
 	if ctx == nil {
 		log.Fatal("ctx is nil")
-	} else {
-		ctx.ImportCertificate(id, cert)
+	}
+	raw, err := os.ReadFile(certPath)
+	if err != nil {
+		log.Fatalf("ImportCert: reading %s: %v", certPath, err)
+	}
+	block, _ := pem.Decode(raw)
+	if block == nil {
+		log.Fatalf("ImportCert: no PEM block found in %s", certPath)
+	}
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		log.Fatalf("ImportCert: parsing certificate: %v", err)
+	}
+	if err := ctx.ImportCertificate(id, cert); err != nil {
+		log.Fatalf("ImportCert: importing to HSM: %v", err)
 	}
 }
 

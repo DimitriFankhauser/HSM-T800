@@ -15,6 +15,8 @@ func main() {
 		fmt.Println(m.tokenLabel)
 		fmt.Println(m.keyPairs)
 		fmt.Println(m.errorMsg)
+		fmt.Println(m.modes[LIST].Step)
+		fmt.Println(m.modes[LIST].selectedCert.Leaf.Issuer.CommonName)
 
 	}
 }
