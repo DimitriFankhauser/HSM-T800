@@ -227,13 +227,25 @@ func handleKeyPair(msg tea.Msg, m model) (model, tea.Cmd) {
 }
 
 func handleList(msg tea.Msg, m model) (model, tea.Cmd) {
-	m.modes[LIST].Step++
-	m.modes[LIST].selectedKP = m.keyPairs[m.cursor]
+	switch m.modes[LIST].Step {
+	case 0:
+		m.modes[LIST].selectedKP = m.keyPairs[m.cursor]
+		m.modes[LIST].Step = 1
+		return m, nil
+	case 2:
+		var cmd tea.Cmd
+		m.filepicker, cmd = m.filepicker.Update(msg)
+		if selected, path := m.filepicker.DidSelectFile(msg); selected {
+			importCertForKeyPair(m.ctx, m.modes[LIST].selectedKP, path)
+			return m, tea.Quit
+		}
+		return m, cmd
+	}
 	return m, nil
 }
 func handleListCerts(msg tea.Msg, m model) (model, tea.Cmd) {
 	m.modes[LIST_CERTS].Step++
-	m.modes[LIST].selectedCert = m.certificates[m.cursor]
+	m.modes[LIST_CERTS].selectedCert = m.certificates[m.cursor]
 	return m, nil
 }
 func handleQuarkus(msg tea.Msg, m model) (model, tea.Cmd) {

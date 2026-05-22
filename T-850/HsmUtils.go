@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
@@ -34,8 +35,54 @@ func checkFileExists(filePath string) bool {
 	return true
 }
 
+func importCertForKeyPair(ctx *crypto11.Context, kp crypto11.Signer, certPath string) {
+	attr, err := ctx.GetAttribute(kp, crypto11.CkaId)
+	if err != nil || attr == nil {
+		log.Fatalf("importCertForKeyPair: getting key ID: %v", err)
+	}
+	ImportCert(ctx, attr.Value, certPath)
+}
+
 func deleteKeyPair(ctx *crypto11.Context, kp crypto11.Signer) {
 	kp.Delete()
+}
+func deleteCertificate(ctx *crypto11.Context, cert tls.Certificate) {
+	err := ctx.DeleteCertificate(nil, nil, cert.Leaf.SerialNumber)
+	if err != nil {
+		log.Fatalf("Serial Number doesn't match. Can't delete certificate: %v", err)
+	}
+}
+func exportCertificate(ctx *crypto11.Context, cert tls.Certificate) {
+	f, err := os.Create("certificate.pem")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+	pem.Encode(f, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: cert.Leaf.Raw,
+	})
+}
+
+func generateCSR(cert tls.Certificate) {
+	template := &x509.CertificateRequest{
+		Subject:        cert.Leaf.Subject,
+		DNSNames:       cert.Leaf.DNSNames,
+		IPAddresses:    cert.Leaf.IPAddresses,
+		EmailAddresses: cert.Leaf.EmailAddresses,
+	}
+	csrBytes, err := x509.CreateCertificateRequest(rand.Reader, template, cert.PrivateKey)
+	if err != nil {
+		log.Fatalf("generateCSR: creating CSR: %v", err)
+	}
+	f, err := os.Create("csr.pem")
+	if err != nil {
+		log.Fatalf("generateCSR: creating file: %v", err)
+	}
+	defer f.Close()
+	if err := pem.Encode(f, &pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrBytes}); err != nil {
+		log.Fatalf("generateCSR: encoding PEM: %v", err)
+	}
 }
 
 func exportPublicKey(ctx *crypto11.Context, kp crypto11.Signer) {

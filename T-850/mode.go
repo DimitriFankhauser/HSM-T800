@@ -47,7 +47,6 @@ func init() {
 		{ModeNumber: LIST, Name: "List all Keypairs", Handler: handleList, ViewHandler: HandleViewList, Step: 0},
 		{ModeNumber: LIST_CERTS, Name: "List all Certificates", Handler: handleListCerts, ViewHandler: HandleViewListCerts, Step: 0},
 		{ModeNumber: CREATE_KEYPAIR, Name: "create a key pair", Handler: handleKeyPair, ViewHandler: HandleViewKeyPair, Step: 0},
-		{ModeNumber: GENERATE_QUARKUS_FILES, Name: "Generate Files for Quarkus", Handler: handleQuarkus, ViewHandler: HandleViewQuarkus, Step: 0},
 	}
 }
 

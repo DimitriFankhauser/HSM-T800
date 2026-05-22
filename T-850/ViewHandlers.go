@@ -64,7 +64,6 @@ func HandleViewInit(m model) tea.View {
 		}
 		s += fmt.Sprintf("%s %s\n", cur, choice.Name)
 	}
-	s += fmt.Sprintf("\nCurrent mode:\n%s", modes[m.selectedMode].Name)
 	return tea.NewView(s)
 }
 
@@ -77,6 +76,10 @@ func getKeyLabel(ctx *crypto11.Context, kp crypto11.Signer) string {
 }
 
 func HandleViewList(m model) tea.View {
+	if m.modes[LIST].Step == 2 {
+		return tea.NewView(lipgloss.JoinVertical(lipgloss.Top, "Select Certificate to Import", m.filepicker.View()))
+	}
+
 	var s string
 
 	s += fmt.Sprintf("%-20s %-10s %-15s\n", "Label", "Key Type", "Key Length")
@@ -114,6 +117,8 @@ func HandleViewList(m model) tea.View {
 		s += fmt.Sprintf("%s to generate files for Quarkus \n", red.Render("[Q]"))
 		s += fmt.Sprintf("%s to delete the KeyPair \n", red.Render("[D]"))
 		s += fmt.Sprintf("%s to export the Public Key \n", red.Render("[E]"))
+		s += fmt.Sprintf("%s to import a certificate for this KeyPair \n", red.Render("[I]"))
+
 	}
 
 	return tea.NewView(s)
@@ -141,8 +146,16 @@ func HandleViewListCerts(m model) tea.View {
 		issuer := leaf.Issuer.CommonName
 		expiry := leaf.NotAfter.Format(certDateFormat)
 		s += fmt.Sprintf("%-2s %-20s %-30s %-30s %-12s\n", cur, keyLabel, subject, issuer, expiry)
+
+	}
+	if m.modes[LIST_CERTS].selectedCert.Certificate != nil {
+		red := lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
+		s += fmt.Sprintf("%s to create a (signed) CSR \n", red.Render("[R]"))
+		s += fmt.Sprintf("%s to export the Certificate \n", red.Render("[E]"))
+		s += fmt.Sprintf("%s to delete the Certificate \n", red.Render("[D]"))
 	}
 	return tea.NewView(s)
+
 }
 func HandleViewKeyPair(m model) tea.View {
 	var s string
