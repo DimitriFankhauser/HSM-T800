@@ -2,7 +2,9 @@ package main
 
 import (
 	"crypto/rand"
+	"fmt"
 	"os"
+	"time"
 	"unicode"
 
 	"charm.land/bubbles/v2/filepicker"
@@ -15,7 +17,13 @@ const DEBUG_TOKENLABEL = "Genesis"
 const DEBUG_PIN = "123456789"
 
 func handleInit(msg tea.Msg, m model) (model, tea.Cmd) {
+	//TODO: make case for one-file-keypairs
 	switch m.modes[INIT].Step {
+	case -1:
+		time.Sleep(3 * time.Second)
+		m.modes[INIT].Step = 0
+		return m, nil
+
 	case 0:
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
@@ -85,7 +93,11 @@ func handleInit(msg tea.Msg, m model) (model, tea.Cmd) {
 					return m, nil
 				}
 				m.pin = pin
-				initializeCtx(&m)
+				if err := initializeCtx(&m); err != nil {
+					m.exitMessage = err.Error()
+					m.FinishError = true
+					return m, nil
+				}
 				m.errorMsg = ""
 				m.textInput.Reset()
 				m.modes[INIT].Step = 3
@@ -108,11 +120,23 @@ func handleInit(msg tea.Msg, m model) (model, tea.Cmd) {
 					m.textInput.EchoMode = textinput.EchoNormal
 				case 1:
 					m.cursor = 0
-					m.keyPairs = getKeyPairs(m.ctx)
+					kps, err := getKeyPairs(m.ctx)
+					if err != nil {
+						m.exitMessage = err.Error()
+						m.FinishError = true
+						return m, nil
+					}
+					m.keyPairs = kps
 					m.selectedMode = LIST
 				case 2:
 					m.cursor = 0
-					m.certificates = getCertificates(m.ctx)
+					certs, err := getCertificates(m.ctx)
+					if err != nil {
+						m.exitMessage = err.Error()
+						m.FinishError = true
+						return m, nil
+					}
+					m.certificates = certs
 					m.selectedMode = LIST_CERTS
 				case 3:
 					m.selectedMode = CREATE_KEYPAIR
@@ -207,16 +231,29 @@ func handleImport(msg tea.Msg, m model) (model, tea.Cmd) {
 		return m, cmd
 
 	case 4:
-		_, key := LoadX509KeyPair(m.modes[IMPORT].CertPath, m.modes[IMPORT].PrivateKeyPath)
+		_, key, err := LoadX509KeyPair(m.modes[IMPORT].CertPath, m.modes[IMPORT].PrivateKeyPath)
+		if err != nil {
+			m.exitMessage = err.Error()
+			m.FinishError = true
+			return m, nil
+		}
 
 		id := make([]byte, 16)
 		rand.Read(id)
 
 		if err := importKeyPair(m.pathToSo, m.tokenLabel, m.pin, key, id, m.keyLabel); err != nil {
-			m.errorMsg = err.Error()
+			m.exitMessage = err.Error()
+			m.FinishError = true
+			return m, nil
 		}
-		ImportCert(m.ctx, id, m.modes[IMPORT].CertPath)
-		return m, tea.Quit
+		cp, err := ImportCert(m.ctx, id, m.modes[IMPORT].CertPath)
+		if err != nil {
+			m.exitMessage = err.Error()
+			m.FinishError = true
+			return m, nil
+		}
+		m.exitMessage = fmt.Sprintf("Successfully imported certificate: %s", cp)
+		return m, nil
 
 	}
 	return m, nil
@@ -236,8 +273,14 @@ func handleList(msg tea.Msg, m model) (model, tea.Cmd) {
 		var cmd tea.Cmd
 		m.filepicker, cmd = m.filepicker.Update(msg)
 		if selected, path := m.filepicker.DidSelectFile(msg); selected {
-			importCertForKeyPair(m.ctx, m.modes[LIST].selectedKP, path)
-			return m, tea.Quit
+			msg, err := importCertForKeyPair(m.ctx, m.modes[LIST].selectedKP, path)
+			if err != nil {
+				m.exitMessage = err.Error()
+				m.FinishError = true
+				return m, nil
+			}
+			m.exitMessage = msg
+			return m, nil
 		}
 		return m, cmd
 	}
@@ -247,7 +290,4 @@ func handleListCerts(msg tea.Msg, m model) (model, tea.Cmd) {
 	m.modes[LIST_CERTS].Step++
 	m.modes[LIST_CERTS].selectedCert = m.certificates[m.cursor]
 	return m, nil
-}
-func handleQuarkus(msg tea.Msg, m model) (model, tea.Cmd) {
-	return m, tea.Quit
 }

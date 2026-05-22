@@ -5,5 +5,8 @@ import (
 )
 
 func (m model) View() tea.View {
+	if m.exitMessage != "" {
+		return finalScreen(m.exitMessage)
+	}
 	return modes[m.selectedMode].ViewHandler(m)
 }

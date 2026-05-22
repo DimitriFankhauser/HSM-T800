@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 )
 
-func generatePropertiesForQuarkus(pin string, label string) {
+func generatePropertiesForQuarkus(pin string, label string) error {
 	var s string = ""
 	s += "quarkus.security.security-providers=SunPKCS11 \n"
 	s += "quarkus.security.security-provider-config.SunPKCS11=pkcs11.cfg \n"
@@ -17,20 +17,18 @@ func generatePropertiesForQuarkus(pin string, label string) {
 	s += "quarkus.http.insecure-requests=disabled"
 
 	wd, err := os.Getwd()
-	check(err)
+	if err != nil {
+		return fmt.Errorf("generatePropertiesForQuarkus: getting working directory: %v", err)
+	}
 
 	path := filepath.Join(wd, "application.properties")
-	err = os.WriteFile(path, []byte(s), 0644)
-	check(err)
-}
-
-func check(e error) {
-	if e != nil {
-		panic(e)
+	if err = os.WriteFile(path, []byte(s), 0644); err != nil {
+		return fmt.Errorf("generatePropertiesForQuarkus: writing file: %v", err)
 	}
+	return nil
 }
-func generateCfgForQuarkus(pathToSo string, slot string) {
 
+func generateCfgForQuarkus(pathToSo string, slot string) error {
 	var s string
 
 	s = "name = generated_by_t800 \n"
@@ -38,9 +36,13 @@ func generateCfgForQuarkus(pathToSo string, slot string) {
 	s += fmt.Sprintf("slot = %s\n", slot)
 
 	wd, err := os.Getwd()
-	check(err)
+	if err != nil {
+		return fmt.Errorf("generateCfgForQuarkus: getting working directory: %v", err)
+	}
 
 	path := filepath.Join(wd, "pkcs11.cfg")
-	err = os.WriteFile(path, []byte(s), 0644)
-	check(err)
+	if err = os.WriteFile(path, []byte(s), 0644); err != nil {
+		return fmt.Errorf("generateCfgForQuarkus: writing file: %v", err)
+	}
+	return nil
 }

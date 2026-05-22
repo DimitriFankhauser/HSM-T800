@@ -42,7 +42,7 @@ var modes []Mode
 
 func init() {
 	modes = []Mode{
-		{ModeNumber: INIT, Name: "Initial Mode", Handler: handleInit, ViewHandler: HandleViewInit, Step: 0},
+		{ModeNumber: INIT, Name: "Initial Mode", Handler: handleInit, ViewHandler: HandleViewInit, Step: -1},
 		{ModeNumber: IMPORT, Name: "import a TLS-Certificate and Keypair into my HSM", Handler: handleImport, ViewHandler: HandleViewImport, Step: 0},
 		{ModeNumber: LIST, Name: "List all Keypairs", Handler: handleList, ViewHandler: HandleViewList, Step: 0},
 		{ModeNumber: LIST_CERTS, Name: "List all Certificates", Handler: handleListCerts, ViewHandler: HandleViewListCerts, Step: 0},
@@ -66,6 +66,11 @@ type model struct {
 
 	termHeight int
 
+	// finish error is set, when an error happens
+	FinishError bool
+
+	exitMessage string
+
 	textInput  textinput.Model
 	filepicker filepicker.Model
 }
@@ -81,6 +86,8 @@ func initialModel() model {
 		selectedMode:  INIT,
 		textInput:     initializeTextInput(),
 		debuggingMode: true,
+		FinishError:   false,
+		exitMessage:   "",
 	}
 }
 

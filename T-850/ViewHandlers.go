@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/rsa"
 	"fmt"
+	"os"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -13,7 +14,31 @@ import (
 
 const certDateFormat = "2006-01-02"
 
+func welcomeScreen() string {
+	b, err := os.ReadFile("welcome.txt")
+	if err != nil {
+		panic(err)
+	}
+	return string(b)
+}
+
+func finalScreen(goodbyeMessage string) tea.View {
+	var s string = goodbyeMessage
+	s += "\n Goodbye!"
+	return tea.NewView(s)
+}
+
+func errorScreen(userinput string) tea.View {
+	return tea.NewView("ERROR")
+}
+
 func HandleViewInit(m model) tea.View {
+	if m.modes[INIT].Step == -1 {
+		var s string = "WELCOME TO \n"
+		s += welcomeScreen()
+		return tea.NewView(s)
+	}
+
 	if m.modes[INIT].Step == 0 {
 		header := "Enter the Path to your PKCS11-Library"
 		var c *tea.Cursor
@@ -148,7 +173,9 @@ func HandleViewListCerts(m model) tea.View {
 		s += fmt.Sprintf("%-2s %-20s %-30s %-30s %-12s\n", cur, keyLabel, subject, issuer, expiry)
 
 	}
-	if m.modes[LIST_CERTS].selectedCert.Certificate != nil {
+	if m.modes[LIST_CERTS].selectedCert.Certificate == nil {
+		s += fmt.Sprintf("Press 'enter' to select a Certificate")
+	} else if m.modes[LIST_CERTS].selectedCert.Certificate != nil {
 		red := lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
 		s += fmt.Sprintf("%s to create a (signed) CSR \n", red.Render("[R]"))
 		s += fmt.Sprintf("%s to export the Certificate \n", red.Render("[E]"))
@@ -191,9 +218,4 @@ func HandleViewImport(m model) tea.View {
 	}
 
 	return tea.NewView("Not implemented")
-}
-func HandleViewQuarkus(m model) tea.View {
-	var s string
-	s = "Not implemented"
-	return tea.NewView(s)
 }

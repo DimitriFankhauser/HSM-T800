@@ -9,10 +9,11 @@ import (
 	"crypto/x509"
 	"encoding/asn1"
 	"encoding/pem"
+	"errors"
 	"fmt"
-	"log"
 	"math/big"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/ThalesGroup/crypto11"
@@ -35,36 +36,49 @@ func checkFileExists(filePath string) bool {
 	return true
 }
 
-func importCertForKeyPair(ctx *crypto11.Context, kp crypto11.Signer, certPath string) {
+func importCertForKeyPair(ctx *crypto11.Context, kp crypto11.Signer, certPath string) (string, error) {
 	attr, err := ctx.GetAttribute(kp, crypto11.CkaId)
 	if err != nil || attr == nil {
-		log.Fatalf("importCertForKeyPair: getting key ID: %v", err)
+		return "", fmt.Errorf("importCertForKeyPair: getting key ID: %v", err)
 	}
-	ImportCert(ctx, attr.Value, certPath)
+	return ImportCert(ctx, attr.Value, certPath)
 }
 
-func deleteKeyPair(ctx *crypto11.Context, kp crypto11.Signer) {
-	kp.Delete()
+func deleteKeyPair(ctx *crypto11.Context, kp crypto11.Signer) (string, error) {
+	err := kp.Delete()
+	if err != nil {
+		return "", err
+	}
+	return "Successfully deleted Keypair", nil
 }
-func deleteCertificate(ctx *crypto11.Context, cert tls.Certificate) {
+func deleteCertificate(ctx *crypto11.Context, cert tls.Certificate) (string, error) {
 	err := ctx.DeleteCertificate(nil, nil, cert.Leaf.SerialNumber)
 	if err != nil {
-		log.Fatalf("Serial Number doesn't match. Can't delete certificate: %v", err)
+		return "", errors.New(fmt.Sprintf("Serial Number doesn't match. Can't delete certificate: %v", err))
 	}
+	return "Successfully deleted certificate", nil
 }
-func exportCertificate(ctx *crypto11.Context, cert tls.Certificate) {
-	f, err := os.Create("certificate.pem")
+func exportCertificate(ctx *crypto11.Context, cert tls.Certificate) (string, error) {
+	filepath := "certificate.pem"
+	f, err := os.Create(filepath)
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
+
 	defer f.Close()
-	pem.Encode(f, &pem.Block{
+	err = pem.Encode(f, &pem.Block{
 		Type:  "CERTIFICATE",
 		Bytes: cert.Leaf.Raw,
 	})
+	if err != nil {
+		return "", err
+
+	}
+	dirPath, _ := os.Getwd()
+	return path.Join(dirPath, filepath), err
 }
 
-func generateCSR(cert tls.Certificate) {
+func generateCSR(cert tls.Certificate) (string, error) {
 	template := &x509.CertificateRequest{
 		Subject:        cert.Leaf.Subject,
 		DNSNames:       cert.Leaf.DNSNames,
@@ -73,128 +87,133 @@ func generateCSR(cert tls.Certificate) {
 	}
 	csrBytes, err := x509.CreateCertificateRequest(rand.Reader, template, cert.PrivateKey)
 	if err != nil {
-		log.Fatalf("generateCSR: creating CSR: %v", err)
+		return "", errors.New(fmt.Sprintf("generateCSR: creating CSR: %v", err))
 	}
-	f, err := os.Create("csr.pem")
+	filepath := "csr.pem"
+	f, err := os.Create(filepath)
 	if err != nil {
-		log.Fatalf("generateCSR: creating file: %v", err)
+
+		return "", errors.New(fmt.Sprintf("generateCSR: creating file: %v", err))
 	}
 	defer f.Close()
+	dirPath, _ := os.Getwd()
+
 	if err := pem.Encode(f, &pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrBytes}); err != nil {
-		log.Fatalf("generateCSR: encoding PEM: %v", err)
+		return "", errors.New(fmt.Sprintf("generateCSR: encoding PEM: %v", err))
 	}
+	return path.Join(dirPath, filepath), err
+
 }
 
-func exportPublicKey(ctx *crypto11.Context, kp crypto11.Signer) {
-	f, err := os.Create("public.pem")
+func exportPublicKey(ctx *crypto11.Context, kp crypto11.Signer) (string, error) {
+	filePath := "public.pem"
+	f, err := os.Create(filePath)
 	if err != nil {
-		log.Fatal(err)
+		return "", errors.New(fmt.Sprintf("exportPublicKey: creating file: %v", err))
 	}
 	defer f.Close()
+	wd, _ := os.Getwd()
 	publicKey := kp.Public()
 	pkixBytes, _ := x509.MarshalPKIXPublicKey(publicKey)
 
-	pem.Encode(f, &pem.Block{
+	if err = pem.Encode(f, &pem.Block{
 		Type:  "PUBLIC KEY",
 		Bytes: pkixBytes,
-	})
+	}); err != nil {
+		return "", errors.New(fmt.Sprintf("exportPublicKey: encoding PEM: %v", err))
+	}
+	return path.Join(wd, filePath), nil
 }
 
-func initializeCtx(m *model) {
+func initializeCtx(m *model) error {
 	ctx, err := crypto11.Configure(&crypto11.Config{
 		Path:       m.pathToSo,
 		TokenLabel: m.tokenLabel,
 		Pin:        m.pin,
 	})
 	if err != nil {
-		ctx = nil
-		log.Fatal(err)
-	} else {
-		m.ctx = ctx
+		return fmt.Errorf("initializeCtx: %v", err)
 	}
+	m.ctx = ctx
+	return nil
 }
 
-func getKeyPairs(ctx *crypto11.Context) []crypto11.Signer {
+func getKeyPairs(ctx *crypto11.Context) ([]crypto11.Signer, error) {
 	if ctx == nil {
-		return nil
-	} else {
-		keyPairs, err := ctx.FindAllKeyPairs()
-		if err != nil {
-			log.Fatalf("FindAllKeyPairs: %v", err)
-		}
-		return keyPairs
+		return nil, errors.New("getKeyPairs: ctx is nil")
 	}
-
+	keyPairs, err := ctx.FindAllKeyPairs()
+	if err != nil {
+		return nil, fmt.Errorf("getKeyPairs: %v", err)
+	}
+	return keyPairs, nil
 }
 
-func getCertificates(ctx *crypto11.Context) []tls.Certificate {
+func getCertificates(ctx *crypto11.Context) ([]tls.Certificate, error) {
 	if ctx == nil {
-		return nil
+		return nil, errors.New("getCertificates: ctx is nil")
 	}
 	certs, err := ctx.FindAllPairedCertificates()
 	if err != nil {
-		log.Fatalf("FindAllPairedCertificates: %v", err)
+		return nil, fmt.Errorf("getCertificates: %v", err)
 	}
-	return certs
+	return certs, nil
 }
 
-func LoadX509KeyPair(certFile, keyFile string) (*x509.Certificate, interface{}) {
-	cf, e := os.ReadFile(certFile)
-	if e != nil {
-		fmt.Println("cfload:", e.Error())
-		os.Exit(1)
+func LoadX509KeyPair(certFile, keyFile string) (*x509.Certificate, interface{}, error) {
+	cf, err := os.ReadFile(certFile)
+	if err != nil {
+		return nil, nil, fmt.Errorf("LoadX509KeyPair: reading cert %s: %v", certFile, err)
 	}
 
-	kf, e := os.ReadFile(keyFile)
-	if e != nil {
-		fmt.Println("kfload:", e.Error())
-		os.Exit(1)
+	kf, err := os.ReadFile(keyFile)
+	if err != nil {
+		return nil, nil, fmt.Errorf("LoadX509KeyPair: reading key %s: %v", keyFile, err)
 	}
 	cpb, cr := pem.Decode(cf)
 	fmt.Println(string(cr))
 	kpb, kr := pem.Decode(kf)
 	fmt.Println(string(kr))
-	crt, e := x509.ParseCertificate(cpb.Bytes)
-	if e != nil {
-		fmt.Println("parsex509:", e.Error())
-		os.Exit(1)
+	crt, err := x509.ParseCertificate(cpb.Bytes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("LoadX509KeyPair: parsing certificate: %v", err)
 	}
 
 	var key interface{}
 	// Try PKCS8 first, then PKCS1, then EC
-	key, e = x509.ParsePKCS8PrivateKey(kpb.Bytes)
-	if e != nil {
-		key, e = x509.ParsePKCS1PrivateKey(kpb.Bytes)
-		if e != nil {
-			key, e = x509.ParseECPrivateKey(kpb.Bytes)
-			if e != nil {
-				fmt.Println("parsekey: could not parse key as PKCS8, PKCS1 or EC")
-				os.Exit(1)
+	key, err = x509.ParsePKCS8PrivateKey(kpb.Bytes)
+	if err != nil {
+		key, err = x509.ParsePKCS1PrivateKey(kpb.Bytes)
+		if err != nil {
+			key, err = x509.ParseECPrivateKey(kpb.Bytes)
+			if err != nil {
+				return nil, nil, errors.New("LoadX509KeyPair: could not parse key as PKCS8, PKCS1 or EC")
 			}
 		}
 	}
-	return crt, key
+	return crt, key, nil
 }
 
-func ImportCert(ctx *crypto11.Context, id []byte, certPath string) {
+func ImportCert(ctx *crypto11.Context, id []byte, certPath string) (cp string, err error) {
 	if ctx == nil {
-		log.Fatal("ctx is nil")
+		return "", errors.New("ctx is nil")
 	}
 	raw, err := os.ReadFile(certPath)
 	if err != nil {
-		log.Fatalf("ImportCert: reading %s: %v", certPath, err)
+		return "", errors.New(fmt.Sprintf("ImportCert: reading %s: %v", certPath, err))
 	}
 	block, _ := pem.Decode(raw)
 	if block == nil {
-		log.Fatalf("ImportCert: no PEM block found in %s", certPath)
+		return "", errors.New(fmt.Sprintf("ImportCert: no PEM block found in %s", certPath))
 	}
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		log.Fatalf("ImportCert: parsing certificate: %v", err)
+		return "", errors.New(fmt.Sprintf("ImportCert: parsing certificate: %v", err))
 	}
 	if err := ctx.ImportCertificate(id, cert); err != nil {
-		log.Fatalf("ImportCert: importing to HSM: %v", err)
+		return "", errors.New(fmt.Sprintf("ImportCert: importing to HSM: %v", err))
 	}
+	return certPath, nil
 }
 
 func importKeyPair(pathToSo, tokenLabel, pin string, key interface{}, id []byte, label string) error {
