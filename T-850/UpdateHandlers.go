@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto"
 	"crypto/rand"
 	"fmt"
 	"os"
@@ -260,6 +261,71 @@ func handleImport(msg tea.Msg, m model) (model, tea.Cmd) {
 }
 
 func handleKeyPair(msg tea.Msg, m model) (model, tea.Cmd) {
+	return m, nil
+}
+
+var signHashOptions = []struct {
+	label string
+	algo  crypto.Hash
+}{
+	{"SHA-256", crypto.SHA256},
+	{"SHA-384", crypto.SHA384},
+	{"SHA-512", crypto.SHA512},
+}
+
+func handleSign(msg tea.Msg, m model) (model, tea.Cmd) {
+	switch m.modes[SIGN].Step {
+	case 0:
+		// Hash algorithm selection via cursor.
+		if key, ok := msg.(tea.KeyMsg); ok {
+			switch key.String() {
+			case "up":
+				if m.cursor > 0 {
+					m.cursor--
+				}
+			case "down":
+				if m.cursor < len(signHashOptions)-1 {
+					m.cursor++
+				}
+			case "enter":
+				sign := m.modes[SIGN]
+				sign.HashAlgo = signHashOptions[m.cursor].algo
+				sign.Step = 1
+				m.modes[SIGN] = sign
+				m.cursor = 0
+				m.filepicker = newFilepicker(m, []string{})
+				return m, m.filepicker.Init()
+			}
+		}
+		return m, nil
+
+	case 1:
+		if key, ok := msg.(tea.KeyMsg); ok && key.String() == "tab" {
+			if len(m.modes[SIGN].SignFiles) == 0 {
+				m.errorMsg = "Select at least one file before signing"
+				return m, nil
+			}
+			outPath, err := signFiles(m.modes[SIGN].SigningKey, m.modes[SIGN].SignFiles, m.modes[SIGN].HashAlgo)
+			if err != nil {
+				m.exitMessage = err.Error()
+				m.FinishError = true
+				return m, nil
+			}
+			m.exitMessage = fmt.Sprintf("Signature written to %s", outPath)
+			m.FinishError = false
+			return m, nil
+		}
+		var cmd tea.Cmd
+		m.filepicker, cmd = m.filepicker.Update(msg)
+		if selected, path := m.filepicker.DidSelectFile(msg); selected {
+			sign := m.modes[SIGN]
+			sign.SignFiles = append(sign.SignFiles, path)
+			m.modes[SIGN] = sign
+			m.filepicker = newFilepicker(m, []string{})
+			return m, m.filepicker.Init()
+		}
+		return m, cmd
+	}
 	return m, nil
 }
 

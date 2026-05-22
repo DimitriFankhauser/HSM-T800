@@ -61,6 +61,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.FinishError = false
 			}
 			return m, nil
+		case "S":
+			if m.selectedMode == LIST && m.modes[LIST].selectedKP != nil && m.modes[LIST].Step >= 1 {
+				sign := m.modes[SIGN]
+				sign.SignFiles = nil
+				sign.SigningKey = m.modes[LIST].selectedKP
+				sign.Step = 0
+				m.modes[SIGN] = sign
+				m.selectedMode = SIGN
+				m.cursor = 0
+				return m, nil
+			}
+			return m, nil
 		case "I":
 			if m.selectedMode == LIST && m.modes[LIST].selectedKP != nil {
 				m.filepicker = newFilepicker(m, []string{".pem", ".crt", ".cer", ".der"})
@@ -116,9 +128,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			return m, nil
+
 		case "down":
 			if m.selectedMode == INIT && m.modes[INIT].Step == 3 {
-				if m.cursor < len(m.modes)-1 {
+				if m.cursor < SIGN-2 {
 					m.cursor++
 				}
 				return m, nil

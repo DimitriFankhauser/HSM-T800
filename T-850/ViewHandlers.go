@@ -33,6 +33,7 @@ func errorScreen(userinput string) tea.View {
 }
 
 func HandleViewInit(m model) tea.View {
+
 	if m.modes[INIT].Step == -1 {
 		var s string = "WELCOME TO \n"
 		s += welcomeScreen()
@@ -82,7 +83,7 @@ func HandleViewInit(m model) tea.View {
 	}
 
 	var s string
-	for i, choice := range m.modes[1:] {
+	for i, choice := range m.modes[1:SIGN] {
 		cur := " "
 		if m.cursor == i {
 			cur = "*"
@@ -143,6 +144,7 @@ func HandleViewList(m model) tea.View {
 		s += fmt.Sprintf("%s to delete the KeyPair \n", red.Render("[D]"))
 		s += fmt.Sprintf("%s to export the Public Key \n", red.Render("[E]"))
 		s += fmt.Sprintf("%s to import a certificate for this KeyPair \n", red.Render("[I]"))
+		s += fmt.Sprintf("%s to create a Signature with this KeyPair \n", red.Render("[S]"))
 
 	}
 
@@ -187,6 +189,42 @@ func HandleViewListCerts(m model) tea.View {
 func HandleViewKeyPair(m model) tea.View {
 	var s string
 	s = "Not implemented"
+	return tea.NewView(s)
+}
+
+func HandleViewSign(m model) tea.View {
+	red := lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
+
+	var s string
+	s += fmt.Sprintf("Signing with key: %s\n\n", getKeyLabel(m.ctx, m.modes[SIGN].SigningKey))
+
+	if m.modes[SIGN].Step == 0 {
+		s += "Select hash algorithm:\n\n"
+		for i, opt := range signHashOptions {
+			cur := " "
+			if m.cursor == i {
+				cur = "*"
+			}
+			s += fmt.Sprintf("%s %s\n", cur, opt.label)
+		}
+		return tea.NewView(s)
+	}
+
+	if len(m.modes[SIGN].SignFiles) > 0 {
+		s += "Selected files/folders:\n"
+		for _, f := range m.modes[SIGN].SignFiles {
+			s += fmt.Sprintf("  %s\n", f)
+		}
+		s += "\n"
+	}
+
+	if m.errorMsg != "" {
+		s += lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Render(m.errorMsg) + "\n\n"
+	}
+
+	s += fmt.Sprintf("Select files to sign. Press %s when done.\n\n",
+		red.Render("[Tab]"))
+	s += m.filepicker.View()
 	return tea.NewView(s)
 }
 func HandleViewImport(m model) tea.View {

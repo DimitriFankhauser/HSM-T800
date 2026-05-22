@@ -1,16 +1,20 @@
 package main
 
 import (
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/sha512"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/asn1"
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"hash"
 	"math/big"
 	"os"
 	"path"
@@ -214,6 +218,53 @@ func ImportCert(ctx *crypto11.Context, id []byte, certPath string) (cp string, e
 		return "", errors.New(fmt.Sprintf("ImportCert: importing to HSM: %v", err))
 	}
 	return certPath, nil
+}
+
+func newHasher(algo crypto.Hash) (hash.Hash, error) {
+	switch algo {
+	case crypto.SHA256:
+		return sha256.New(), nil
+	case crypto.SHA384:
+		return sha512.New384(), nil
+	case crypto.SHA512:
+		return sha512.New(), nil
+	default:
+		return nil, fmt.Errorf("newHasher: unsupported hash algorithm %v", algo)
+	}
+}
+
+func signFiles(kp crypto11.Signer, files []string, algo crypto.Hash) (string, error) {
+	h, err := newHasher(algo)
+	if err != nil {
+		return "", err
+	}
+	for _, f := range files {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			return "", fmt.Errorf("signFiles: reading %s: %v", f, err)
+		}
+		h.Write(data)
+	}
+	digest := h.Sum(nil)
+
+	sig, err := kp.Sign(rand.Reader, digest, algo)
+	if err != nil {
+		return "", fmt.Errorf("signFiles: signing: %v", err)
+	}
+
+	outPath := "signature.pem"
+	f, err := os.Create(outPath)
+	if err != nil {
+		return "", fmt.Errorf("signFiles: creating output file: %v", err)
+	}
+	defer f.Close()
+
+	if err = pem.Encode(f, &pem.Block{Type: "SIGNATURE", Bytes: sig}); err != nil {
+		return "", fmt.Errorf("signFiles: encoding PEM: %v", err)
+	}
+
+	wd, _ := os.Getwd()
+	return path.Join(wd, outPath), nil
 }
 
 func importKeyPair(pathToSo, tokenLabel, pin string, key interface{}, id []byte, label string) error {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto"
 	"crypto/tls"
 
 	"charm.land/bubbles/v2/filepicker"
@@ -11,12 +12,12 @@ import (
 )
 
 const (
-	INIT                   = 0
-	IMPORT                 = 1
-	LIST                   = 2
-	LIST_CERTS             = 3
-	CREATE_KEYPAIR         = 4
-	GENERATE_QUARKUS_FILES = 5
+	INIT           = 0
+	IMPORT         = 1
+	LIST           = 2
+	LIST_CERTS     = 3
+	CREATE_KEYPAIR = 4
+	SIGN           = 5
 )
 
 type Mode struct {
@@ -36,6 +37,11 @@ type Mode struct {
 
 	// LIST_CERT
 	selectedCert tls.Certificate
+
+	// SIGN
+	SignFiles  []string
+	SigningKey crypto11.Signer
+	HashAlgo   crypto.Hash
 }
 
 var modes []Mode
@@ -47,6 +53,7 @@ func init() {
 		{ModeNumber: LIST, Name: "List all Keypairs", Handler: handleList, ViewHandler: HandleViewList, Step: 0},
 		{ModeNumber: LIST_CERTS, Name: "List all Certificates", Handler: handleListCerts, ViewHandler: HandleViewListCerts, Step: 0},
 		{ModeNumber: CREATE_KEYPAIR, Name: "create a key pair", Handler: handleKeyPair, ViewHandler: HandleViewKeyPair, Step: 0},
+		{ModeNumber: SIGN, Name: "sign files with a key pair", Handler: handleSign, ViewHandler: HandleViewSign, Step: 0},
 	}
 }
 
