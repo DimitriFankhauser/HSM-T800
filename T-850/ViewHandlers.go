@@ -23,8 +23,15 @@ func welcomeScreen() string {
 }
 
 func finalScreen(goodbyeMessage string) tea.View {
-	var s string = goodbyeMessage
-	s += "\n Goodbye!"
+	b, err := os.ReadFile("goodbye.txt")
+	s := string(b)
+	if err != nil {
+		panic(err)
+	}
+	s += "\n"
+	s += strings.Repeat("=", 53)
+	s += "\n"
+	s += goodbyeMessage
 	return tea.NewView(s)
 }
 
@@ -83,12 +90,13 @@ func HandleViewInit(m model) tea.View {
 	}
 
 	var s string
-	for i, choice := range m.modes[1:SIGN] {
+	menuModes := []int{IMPORT, LIST, LIST_CERTS, CREATE_KEYPAIR}
+	for i, modeIdx := range menuModes {
 		cur := " "
 		if m.cursor == i {
 			cur = "*"
 		}
-		s += fmt.Sprintf("%s %s\n", cur, choice.Name)
+		s += fmt.Sprintf("%s %s\n", cur, m.modes[modeIdx].Name)
 	}
 	return tea.NewView(s)
 }
@@ -187,9 +195,58 @@ func HandleViewListCerts(m model) tea.View {
 
 }
 func HandleViewKeyPair(m model) tea.View {
-	var s string
-	s = "Not implemented"
-	return tea.NewView(s)
+	ck := m.modes[CREATE_KEYPAIR]
+
+	switch ck.Step {
+	case 0:
+		header := "Enter key label"
+		var c *tea.Cursor
+		if !m.textInput.VirtualCursor() {
+			c = m.textInput.Cursor()
+			c.Y += lipgloss.Height(header)
+		}
+		parts := []string{header, m.textInput.View()}
+		if m.errorMsg != "" {
+			parts = append(parts, lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Render(m.errorMsg))
+		}
+		return tea.NewView(lipgloss.JoinVertical(lipgloss.Top, parts...))
+
+	case 1:
+		var s string
+		s += fmt.Sprintf("Creating key '%s' — select key type:\n\n", ck.KeyLabel)
+		for i, opt := range keyTypeOptions {
+			cur := " "
+			if m.cursor == i {
+				cur = "*"
+			}
+			s += fmt.Sprintf("%s %s\n", cur, opt)
+		}
+		return tea.NewView(s)
+
+	case 2:
+		var s string
+		s += fmt.Sprintf("Creating %s key '%s' — select key length:\n\n", ck.KeyType, ck.KeyLabel)
+		if ck.KeyType == "RSA" {
+			for i, opt := range rsaKeyOptions {
+				cur := " "
+				if m.cursor == i {
+					cur = "*"
+				}
+				s += fmt.Sprintf("%s %s\n", cur, opt.label)
+			}
+		} else {
+			for i, opt := range eccKeyOptions {
+				cur := " "
+				if m.cursor == i {
+					cur = "*"
+				}
+				s += fmt.Sprintf("%s %s\n", cur, opt.label)
+			}
+		}
+		return tea.NewView(s)
+	}
+
+	return tea.NewView("")
 }
 
 func HandleViewSign(m model) tea.View {

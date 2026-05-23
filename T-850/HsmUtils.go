@@ -267,6 +267,28 @@ func signFiles(kp crypto11.Signer, files []string, algo crypto.Hash) (string, er
 	return path.Join(wd, outPath), nil
 }
 
+func createRSAKeyPair(ctx *crypto11.Context, label string, bits int) error {
+	id := make([]byte, 16)
+	if _, err := rand.Read(id); err != nil {
+		return fmt.Errorf("createRSAKeyPair: generating ID: %v", err)
+	}
+	if _, err := ctx.GenerateRSAKeyPairWithLabel(id, []byte(label), bits); err != nil {
+		return fmt.Errorf("createRSAKeyPair: %v", err)
+	}
+	return nil
+}
+
+func createECCKeyPair(ctx *crypto11.Context, label string, curve elliptic.Curve) error {
+	id := make([]byte, 16)
+	if _, err := rand.Read(id); err != nil {
+		return fmt.Errorf("createECCKeyPair: generating ID: %v", err)
+	}
+	if _, err := ctx.GenerateECDSAKeyPairWithLabel(id, []byte(label), curve); err != nil {
+		return fmt.Errorf("createECCKeyPair: %v", err)
+	}
+	return nil
+}
+
 func importKeyPair(pathToSo, tokenLabel, pin string, key interface{}, id []byte, label string) error {
 	p := pkcs11.New(pathToSo)
 	err := p.Initialize()

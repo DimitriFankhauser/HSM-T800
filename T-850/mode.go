@@ -38,6 +38,11 @@ type Mode struct {
 	// LIST_CERT
 	selectedCert tls.Certificate
 
+	// CREATE_KEYPAIR
+	KeyLabel string
+	KeyType  string
+	KeyBits  int
+
 	// SIGN
 	SignFiles  []string
 	SigningKey crypto11.Signer
@@ -52,7 +57,7 @@ func init() {
 		{ModeNumber: IMPORT, Name: "import a TLS-Certificate and Keypair into my HSM", Handler: handleImport, ViewHandler: HandleViewImport, Step: 0},
 		{ModeNumber: LIST, Name: "List all Keypairs", Handler: handleList, ViewHandler: HandleViewList, Step: 0},
 		{ModeNumber: LIST_CERTS, Name: "List all Certificates", Handler: handleListCerts, ViewHandler: HandleViewListCerts, Step: 0},
-		{ModeNumber: CREATE_KEYPAIR, Name: "create a key pair", Handler: handleKeyPair, ViewHandler: HandleViewKeyPair, Step: 0},
+		{ModeNumber: CREATE_KEYPAIR, Name: "create a key", Handler: handleKeyPair, ViewHandler: HandleViewKeyPair, Step: 0},
 		{ModeNumber: SIGN, Name: "sign files with a key pair", Handler: handleSign, ViewHandler: HandleViewSign, Step: 0},
 	}
 }
@@ -92,7 +97,7 @@ func initialModel() model {
 		modes:         modes,
 		selectedMode:  INIT,
 		textInput:     initializeTextInput(),
-		debuggingMode: true,
+		debuggingMode: false,
 		FinishError:   false,
 		exitMessage:   "",
 	}

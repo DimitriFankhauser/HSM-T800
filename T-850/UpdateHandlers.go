@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto"
+	"crypto/elliptic"
 	"crypto/rand"
 	"fmt"
 	"os"
@@ -140,6 +141,13 @@ func handleInit(msg tea.Msg, m model) (model, tea.Cmd) {
 					m.certificates = certs
 					m.selectedMode = LIST_CERTS
 				case 3:
+					ck := m.modes[CREATE_KEYPAIR]
+					ck.Step = 0
+					m.modes[CREATE_KEYPAIR] = ck
+					m.cursor = 0
+					m.textInput.Reset()
+					m.textInput.Placeholder = "Enter key label"
+					m.textInput.EchoMode = textinput.EchoNormal
 					m.selectedMode = CREATE_KEYPAIR
 				}
 				m.modes[INIT].Step = 4
@@ -260,7 +268,93 @@ func handleImport(msg tea.Msg, m model) (model, tea.Cmd) {
 	return m, nil
 }
 
+var keyTypeOptions = []string{"RSA", "ECC"}
+
+var rsaKeyOptions = []struct {
+	label string
+	bits  int
+}{
+	{"2048 bit", 2048},
+	{"3072 bit", 3072},
+	{"4096 bit", 4096},
+}
+
+var eccKeyOptions = []struct {
+	label string
+	curve elliptic.Curve
+}{
+	{"P-256", elliptic.P256()},
+	{"P-384", elliptic.P384()},
+	{"P-521", elliptic.P521()},
+}
+
 func handleKeyPair(msg tea.Msg, m model) (model, tea.Cmd) {
+	ck := m.modes[CREATE_KEYPAIR]
+	switch ck.Step {
+	case 0:
+		if key, ok := msg.(tea.KeyMsg); ok && key.String() == "enter" {
+			label := m.textInput.Value()
+			if len(label) == 0 {
+				m.errorMsg = "Key label cannot be empty"
+				m.textInput.Reset()
+				return m, nil
+			}
+			if !isValidLabel(label) {
+				m.errorMsg = "Key label must only contain letters, digits, - or _"
+				m.textInput.Reset()
+				return m, nil
+			}
+			ck.KeyLabel = label
+			m.errorMsg = ""
+			m.textInput.Reset()
+			ck.Step = 1
+			m.modes[CREATE_KEYPAIR] = ck
+			m.cursor = 0
+			return m, nil
+		}
+		var cmd tea.Cmd
+		m.textInput, cmd = m.textInput.Update(msg)
+		return m, cmd
+
+	case 1:
+		if key, ok := msg.(tea.KeyMsg); ok && key.String() == "enter" {
+			ck.KeyType = keyTypeOptions[m.cursor]
+			ck.Step = 2
+			m.modes[CREATE_KEYPAIR] = ck
+			m.cursor = 0
+		}
+		return m, nil
+
+	case 2:
+		if key, ok := msg.(tea.KeyMsg); ok {
+			switch key.String() {
+			case "enter":
+				if ck.KeyType == "RSA" {
+					opt := rsaKeyOptions[m.cursor]
+					ck.KeyBits = opt.bits
+					m.modes[CREATE_KEYPAIR] = ck
+					if err := createRSAKeyPair(m.ctx, ck.KeyLabel, ck.KeyBits); err != nil {
+						m.exitMessage = err.Error()
+						m.FinishError = true
+						return m, nil
+					}
+					m.exitMessage = fmt.Sprintf("RSA-%d key pair '%s' created successfully", ck.KeyBits, ck.KeyLabel)
+					m.FinishError = false
+				} else {
+					opt := eccKeyOptions[m.cursor]
+					m.modes[CREATE_KEYPAIR] = ck
+					if err := createECCKeyPair(m.ctx, ck.KeyLabel, opt.curve); err != nil {
+						m.exitMessage = err.Error()
+						m.FinishError = true
+						return m, nil
+					}
+					m.exitMessage = fmt.Sprintf("ECC %s key pair '%s' created successfully", opt.label, ck.KeyLabel)
+					m.FinishError = false
+				}
+			}
+		}
+		return m, nil
+	}
 	return m, nil
 }
 
@@ -276,26 +370,14 @@ var signHashOptions = []struct {
 func handleSign(msg tea.Msg, m model) (model, tea.Cmd) {
 	switch m.modes[SIGN].Step {
 	case 0:
-		// Hash algorithm selection via cursor.
-		if key, ok := msg.(tea.KeyMsg); ok {
-			switch key.String() {
-			case "up":
-				if m.cursor > 0 {
-					m.cursor--
-				}
-			case "down":
-				if m.cursor < len(signHashOptions)-1 {
-					m.cursor++
-				}
-			case "enter":
-				sign := m.modes[SIGN]
-				sign.HashAlgo = signHashOptions[m.cursor].algo
-				sign.Step = 1
-				m.modes[SIGN] = sign
-				m.cursor = 0
-				m.filepicker = newFilepicker(m, []string{})
-				return m, m.filepicker.Init()
-			}
+		if key, ok := msg.(tea.KeyMsg); ok && key.String() == "enter" {
+			sign := m.modes[SIGN]
+			sign.HashAlgo = signHashOptions[m.cursor].algo
+			sign.Step = 1
+			m.modes[SIGN] = sign
+			m.cursor = 0
+			m.filepicker = newFilepicker(m, []string{})
+			return m, m.filepicker.Init()
 		}
 		return m, nil
 

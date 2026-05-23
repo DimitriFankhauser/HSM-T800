@@ -3,8 +3,45 @@ package main
 import (
 	"fmt"
 
+	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 )
+
+func cursorUp(cursor int) int {
+	if cursor > 0 {
+		return cursor - 1
+	}
+	return cursor
+}
+
+func cursorDown(cursor, max int) int {
+	if cursor < max {
+		return cursor + 1
+	}
+	return cursor
+}
+
+// navigationMax returns the cursor upper bound
+func navigationMax(m model) (max int, success bool) {
+	switch {
+	case m.selectedMode == INIT && m.modes[INIT].Step == 3:
+		return 3, true // 4 menu items: IMPORT, LIST, LIST_CERTS, CREATE_KEYPAIR
+	case m.selectedMode == LIST && m.modes[LIST].Step != 2:
+		return len(m.keyPairs) - 1, true
+	case m.selectedMode == LIST_CERTS:
+		return len(m.certificates) - 1, true
+	case m.selectedMode == SIGN && m.modes[SIGN].Step == 0:
+		return len(signHashOptions) - 1, true
+	case m.selectedMode == CREATE_KEYPAIR && m.modes[CREATE_KEYPAIR].Step == 1:
+		return len(keyTypeOptions) - 1, true
+	case m.selectedMode == CREATE_KEYPAIR && m.modes[CREATE_KEYPAIR].Step == 2:
+		if m.modes[CREATE_KEYPAIR].KeyType == "ECC" {
+			return len(eccKeyOptions) - 1, true
+		}
+		return len(rsaKeyOptions) - 1, true
+	}
+	return 0, false
+}
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.exitMessage != "" {
@@ -14,22 +51,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "up":
-			if m.selectedMode == INIT && m.modes[INIT].Step == 3 {
-				if m.cursor > 0 {
-					m.cursor--
-				}
-				return m, nil
-			}
-			if m.selectedMode == LIST && m.modes[LIST].Step != 2 {
-				if m.cursor > 0 {
-					m.cursor--
-				}
-				return m, nil
-			}
-			if m.selectedMode == LIST_CERTS {
-				if m.cursor > 0 {
-					m.cursor--
-				}
+			if _, ok := navigationMax(m); ok {
+				m.cursor = cursorUp(m.cursor)
 				return m, nil
 			}
 		case "Q":
@@ -48,7 +71,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.FinishError = false
 				return m, nil
 			}
-			return m, nil
 		case "R":
 			if m.selectedMode == LIST_CERTS && m.modes[LIST_CERTS].selectedCert.Certificate != nil {
 				certPath, err := generateCSR(m.modes[LIST_CERTS].selectedCert)
@@ -59,8 +81,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.exitMessage = fmt.Sprintf("Certificate generated for Quarkus %s", certPath)
 				m.FinishError = false
+				return m, nil
 			}
-			return m, nil
 		case "S":
 			if m.selectedMode == LIST && m.modes[LIST].selectedKP != nil && m.modes[LIST].Step >= 1 {
 				sign := m.modes[SIGN]
@@ -72,14 +94,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor = 0
 				return m, nil
 			}
-			return m, nil
 		case "I":
 			if m.selectedMode == LIST && m.modes[LIST].selectedKP != nil {
 				m.filepicker = newFilepicker(m, []string{".pem", ".crt", ".cer", ".der"})
 				m.modes[LIST].Step = 2
 				return m, m.filepicker.Init()
 			}
-			return m, nil
 		case "D":
 			if m.modes[LIST].selectedKP != nil && m.modes[LIST].Step >= 1 {
 				exitmsg, err := deleteKeyPair(m.ctx, m.modes[LIST].selectedKP)
@@ -101,9 +121,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.exitMessage = exitmsg
 				m.FinishError = false
+				return m, nil
 			}
-
-			return m, nil
 		case "E":
 			if m.modes[LIST].selectedKP != nil && m.modes[LIST].Step >= 1 {
 				exportPath, err := exportPublicKey(m.ctx, m.modes[LIST].selectedKP)
@@ -127,25 +146,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.FinishError = false
 				return m, nil
 			}
-			return m, nil
-
 		case "down":
-			if m.selectedMode == INIT && m.modes[INIT].Step == 3 {
-				if m.cursor < SIGN-2 {
-					m.cursor++
-				}
+			if max, ok := navigationMax(m); ok {
+				m.cursor = cursorDown(m.cursor, max)
 				return m, nil
 			}
-			if m.selectedMode == LIST && m.modes[LIST].Step != 2 {
-				if m.cursor < len(m.keyPairs)-1 {
-					m.cursor++
-				}
-				return m, nil
-			}
-			if m.selectedMode == LIST_CERTS {
-				if m.cursor < len(m.certificates)-1 {
-					m.cursor++
-				}
+		case "esc":
+			if m.selectedMode != INIT {
+				m.selectedMode = INIT
+				m.modes[INIT].Step = 3
+				m.cursor = 0
+				m.errorMsg = ""
+				m.textInput.Reset()
+				m.textInput.EchoMode = textinput.EchoNormal
 				return m, nil
 			}
 		case "enter":
