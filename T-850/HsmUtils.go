@@ -48,6 +48,18 @@ func importCertForKeyPair(ctx *crypto11.Context, kp crypto11.Signer, certPath st
 	return ImportCert(ctx, attr.Value, certPath)
 }
 
+func keyDescription(ctx *crypto11.Context, kp crypto11.Signer) string {
+	label := getKeyLabel(ctx, kp)
+	switch k := kp.Public().(type) {
+	case *rsa.PublicKey:
+		return fmt.Sprintf("RSA-Key (%d-bits) with label '%s'", k.N.BitLen(), label)
+	case *ecdsa.PublicKey:
+		return fmt.Sprintf("ECC-Key (%s) with label '%s'", k.Curve.Params().Name, label)
+	default:
+		return fmt.Sprintf("Key with label '%s'", label)
+	}
+}
+
 func deleteKeyPair(ctx *crypto11.Context, kp crypto11.Signer) (string, error) {
 	err := kp.Delete()
 	if err != nil {
@@ -421,7 +433,7 @@ func importECPrivateKey(p *pkcs11.Ctx, session pkcs11.SessionHandle, ecKey *ecds
 	// CKA_VALUE for EC private key is the raw big-endian private scalar
 	template := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PRIVATE_KEY),
-		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_ECDSA),
+		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_EC),
 		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
 		pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, true),
 		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
@@ -441,14 +453,18 @@ func importECPublicKey(p *pkcs11.Ctx, session pkcs11.SessionHandle, ecKey *ecdsa
 	}
 
 	// CKA_EC_POINT must be the DER-encoded uncompressed point: 04 || X || Y
-	ecPoint, err := asn1.Marshal(elliptic.Marshal(ecKey.Curve, ecKey.PublicKey.X, ecKey.PublicKey.Y))
+	pubECDH, err := ecKey.PublicKey.ECDH()
+	if err != nil {
+		return 0, fmt.Errorf("converting public key to ECDH: %w", err)
+	}
+	ecPoint, err := asn1.Marshal(pubECDH.Bytes())
 	if err != nil {
 		return 0, fmt.Errorf("marshaling EC point: %w", err)
 	}
 
 	template := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),
-		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_ECDSA),
+		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_EC),
 		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
 		pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
 		pkcs11.NewAttribute(pkcs11.CKA_ID, id),

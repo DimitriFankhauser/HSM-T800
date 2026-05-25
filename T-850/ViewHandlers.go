@@ -89,7 +89,10 @@ func HandleViewInit(m model) tea.View {
 		return tea.NewView(lipgloss.JoinVertical(lipgloss.Top, parts...))
 	}
 
-	var s string
+	var s string = ""
+	s += fmt.Sprintf("Select an Option or Press [Q] to quit.\n")
+	s += fmt.Sprintln(strings.Repeat("-", 53))
+
 	menuModes := []int{IMPORT, LIST, LIST_CERTS, CREATE_KEYPAIR}
 	for i, modeIdx := range menuModes {
 		cur := " "

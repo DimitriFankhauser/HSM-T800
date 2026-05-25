@@ -91,13 +91,13 @@ func (m model) Init() tea.Cmd {
 	return nil
 }
 
-func initialModel() model {
+func initialModel(debug bool) model {
 	return model{
 		cursor:        0,
 		modes:         modes,
 		selectedMode:  INIT,
 		textInput:     initializeTextInput(),
-		debuggingMode: false,
+		debuggingMode: debug,
 		FinishError:   false,
 		exitMessage:   "",
 	}
@@ -109,6 +109,6 @@ func initializeTextInput() textinput.Model {
 	ti.SetVirtualCursor(false)
 	ti.Focus()
 	ti.CharLimit = 156
-	ti.SetWidth(20)
+	ti.SetWidth(40)
 	return ti
 }

@@ -96,19 +96,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "I":
 			if m.selectedMode == LIST && m.modes[LIST].selectedKP != nil {
-				m.filepicker = newFilepicker(m, []string{".pem", ".crt", ".cer", ".der"})
+				m.filepicker = newFilepicker(m, []string{".pem", ".crt", ".cer"})
 				m.modes[LIST].Step = 2
 				return m, m.filepicker.Init()
 			}
 		case "D":
 			if m.modes[LIST].selectedKP != nil && m.modes[LIST].Step >= 1 {
-				exitmsg, err := deleteKeyPair(m.ctx, m.modes[LIST].selectedKP)
+				desc := keyDescription(m.ctx, m.modes[LIST].selectedKP)
+				_, err := deleteKeyPair(m.ctx, m.modes[LIST].selectedKP)
 				if err != nil {
 					m.exitMessage = err.Error()
 					m.FinishError = true
 					return m, nil
 				}
-				m.exitMessage = exitmsg
+				m.exitMessage = desc + " was deleted"
 				m.FinishError = false
 				return m, nil
 			}

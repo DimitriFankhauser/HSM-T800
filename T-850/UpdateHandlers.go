@@ -197,7 +197,7 @@ func handleImport(msg tea.Msg, m model) (model, tea.Cmd) {
 				}
 				m.keyLabel = keyLabel
 				m.errorMsg = ""
-				m.filepicker = newFilepicker(m, []string{".pem", ".crt", ".cer", ".der"})
+				m.filepicker = newFilepicker(m, []string{".pem", ".crt", ".cer"})
 				m.textInput.Reset()
 				m.modes[IMPORT].Step = 1
 				return m, m.filepicker.Init()
@@ -338,7 +338,7 @@ func handleKeyPair(msg tea.Msg, m model) (model, tea.Cmd) {
 						m.FinishError = true
 						return m, nil
 					}
-					m.exitMessage = fmt.Sprintf("RSA-%d key pair '%s' created successfully", ck.KeyBits, ck.KeyLabel)
+					m.exitMessage = fmt.Sprintf("RSA-Key (%d-bits) with label '%s' was created", ck.KeyBits, ck.KeyLabel)
 					m.FinishError = false
 				} else {
 					opt := eccKeyOptions[m.cursor]
@@ -348,7 +348,7 @@ func handleKeyPair(msg tea.Msg, m model) (model, tea.Cmd) {
 						m.FinishError = true
 						return m, nil
 					}
-					m.exitMessage = fmt.Sprintf("ECC %s key pair '%s' created successfully", opt.label, ck.KeyLabel)
+					m.exitMessage = fmt.Sprintf("ECC-Key (%s) with label '%s' was created", opt.label, ck.KeyLabel)
 					m.FinishError = false
 				}
 			}

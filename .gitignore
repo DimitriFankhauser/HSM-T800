@@ -35,3 +35,8 @@ go.work.sum
 *.DER
 *.bin
 *.txt
+*.properties
+
+T-850/diagrams/*
+*.cfg
+t850

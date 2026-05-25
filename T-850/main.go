@@ -1,17 +1,21 @@
 package main
 
 import (
-	"fmt"
+	"flag"
 
 	tea "charm.land/bubbletea/v2"
 )
 
 func main() {
-	p := tea.NewProgram(initialModel())
-	finalModel, _ := p.Run()
-	if m, ok := finalModel.(model); ok {
+	debug := flag.Bool("debug", false, "enable debugging mode (skips HSM credential prompts)")
+	flag.Parse()
 
-		fmt.Println(m.modes[LIST].selectedCert.Certificate != nil)
+	p := tea.NewProgram(initialModel(*debug))
+	p.Run()
+	/*
+			finalModel, _ := p.Run()
 
-	}
+		if m, ok := finalModel.(model); ok {
+
+		}*/
 }
