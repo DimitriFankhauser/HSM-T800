@@ -91,8 +91,8 @@ func (m model) Init() tea.Cmd {
 	return nil
 }
 
-func initialModel(debug bool) model {
-	return model{
+func initialModel(debug bool, modulePath, tokenLabel, pin string) model {
+	m := model{
 		cursor:        0,
 		modes:         modes,
 		selectedMode:  INIT,
@@ -101,6 +101,16 @@ func initialModel(debug bool) model {
 		FinishError:   false,
 		exitMessage:   "",
 	}
+	if modulePath != "" {
+		m.pathToSo = modulePath
+	}
+	if tokenLabel != "" {
+		m.tokenLabel = tokenLabel
+	}
+	if pin != "" {
+		m.pin = pin
+	}
+	return m
 }
 
 func initializeTextInput() textinput.Model {

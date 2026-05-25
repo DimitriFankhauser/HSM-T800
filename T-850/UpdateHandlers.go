@@ -18,15 +18,37 @@ const DEBUG_PATHTOSO = "/usr/lib64/softhsm/libsofthsm.so"
 const DEBUG_TOKENLABEL = "Genesis"
 const DEBUG_PIN = "123456789"
 
+// prefilledMsg is sent as a command to immediately trigger the next Update
+// cycle when init steps are auto-advanced from CLI flags.
+type prefilledMsg struct{}
+
+func prefilledCmd() tea.Cmd {
+	return func() tea.Msg { return prefilledMsg{} }
+}
+
 func handleInit(msg tea.Msg, m model) (model, tea.Cmd) {
 	//TODO: make case for one-file-keypairs
 	switch m.modes[INIT].Step {
 	case -1:
 		time.Sleep(3 * time.Second)
 		m.modes[INIT].Step = 0
-		return m, nil
+		// Send a message so that step 0 is processed right away when flags
+		// have already pre-filled the connection parameters.
+		return m, prefilledCmd()
 
 	case 0:
+		// Auto-advance when --modulePath was supplied on the command line.
+		if m.pathToSo != "" {
+			if !checkFileExists(m.pathToSo) {
+				m.exitMessage = "Invalid --modulePath: file not found: " + m.pathToSo
+				m.FinishError = true
+				return m, nil
+			}
+			m.textInput.Reset()
+			m.textInput.Placeholder = "Enter Token Label"
+			m.modes[INIT].Step = 1
+			return m, prefilledCmd()
+		}
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			if msg.String() == "enter" {
@@ -52,6 +74,14 @@ func handleInit(msg tea.Msg, m model) (model, tea.Cmd) {
 		return m, cmd
 
 	case 1:
+		// Auto-advance when --label was supplied on the command line.
+		if m.tokenLabel != "" {
+			m.textInput.Reset()
+			m.textInput.Placeholder = "Enter PIN"
+			m.textInput.EchoMode = textinput.EchoPassword
+			m.modes[INIT].Step = 2
+			return m, prefilledCmd()
+		}
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			if msg.String() == "enter" {
@@ -80,6 +110,22 @@ func handleInit(msg tea.Msg, m model) (model, tea.Cmd) {
 		return m, cmd
 
 	case 2:
+		// Auto-advance when --pin was supplied on the command line.
+		if m.pin != "" {
+			if len(m.pin) < 4 {
+				m.exitMessage = "Invalid --pin: must be at least 4 characters"
+				m.FinishError = true
+				return m, nil
+			}
+			if err := initializeCtx(&m); err != nil {
+				m.exitMessage = err.Error()
+				m.FinishError = true
+				return m, nil
+			}
+			m.textInput.Reset()
+			m.modes[INIT].Step = 3
+			return m, nil
+		}
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			if msg.String() == "enter" {
