@@ -82,6 +82,7 @@ type model struct {
 	FinishError bool
 
 	exitMessage string
+	statusMsg   string // shown on the main menu after a successful mutating operation
 
 	textInput  textinput.Model
 	filepicker filepicker.Model

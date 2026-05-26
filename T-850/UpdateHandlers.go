@@ -160,6 +160,7 @@ func handleInit(msg tea.Msg, m model) (model, tea.Cmd) {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			if msg.String() == "enter" {
+				m.statusMsg = ""
 				switch m.cursor {
 				case 0:
 					m.selectedMode = IMPORT
@@ -307,8 +308,7 @@ func handleImport(msg tea.Msg, m model) (model, tea.Cmd) {
 			m.FinishError = true
 			return m, nil
 		}
-		m.exitMessage = fmt.Sprintf("Successfully imported certificate: %s", cp)
-		return m, nil
+		return returnToMenu(m, fmt.Sprintf("Successfully imported certificate: %s", cp)), nil
 
 	}
 	return m, nil
@@ -384,8 +384,7 @@ func handleKeyPair(msg tea.Msg, m model) (model, tea.Cmd) {
 						m.FinishError = true
 						return m, nil
 					}
-					m.exitMessage = fmt.Sprintf("RSA-Key (%d-bits) with label '%s' was created", ck.KeyBits, ck.KeyLabel)
-					m.FinishError = false
+					return returnToMenu(m, fmt.Sprintf("RSA-Key (%d-bits) with label '%s' was created", ck.KeyBits, ck.KeyLabel)), nil
 				} else {
 					opt := eccKeyOptions[m.cursor]
 					m.modes[CREATE_KEYPAIR] = ck
@@ -394,8 +393,7 @@ func handleKeyPair(msg tea.Msg, m model) (model, tea.Cmd) {
 						m.FinishError = true
 						return m, nil
 					}
-					m.exitMessage = fmt.Sprintf("ECC-Key (%s) with label '%s' was created", opt.label, ck.KeyLabel)
-					m.FinishError = false
+					return returnToMenu(m, fmt.Sprintf("ECC-Key (%s) with label '%s' was created", opt.label, ck.KeyLabel)), nil
 				}
 			}
 		}
@@ -467,14 +465,15 @@ func handleList(msg tea.Msg, m model) (model, tea.Cmd) {
 		var cmd tea.Cmd
 		m.filepicker, cmd = m.filepicker.Update(msg)
 		if selected, path := m.filepicker.DidSelectFile(msg); selected {
-			msg, err := importCertForKeyPair(m.ctx, m.modes[LIST].selectedKP, path)
+			notice, err := importCertForKeyPair(m.ctx, m.modes[LIST].selectedKP, path)
 			if err != nil {
 				m.exitMessage = err.Error()
 				m.FinishError = true
 				return m, nil
 			}
-			m.exitMessage = msg
-			return m, nil
+			m.modes[LIST].Step = 0
+			m.modes[LIST].selectedKP = nil
+			return returnToMenu(m, notice), nil
 		}
 		return m, cmd
 	}

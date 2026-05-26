@@ -7,6 +7,19 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
+// returnToMenu resets navigation state and displays a success notice on the
+// main menu. Use it after mutating HSM operations that should not quit the app.
+func returnToMenu(m model, statusMsg string) model {
+	m.selectedMode = INIT
+	m.modes[INIT].Step = 3
+	m.cursor = 0
+	m.errorMsg = ""
+	m.statusMsg = statusMsg
+	m.textInput.Reset()
+	m.textInput.EchoMode = textinput.EchoNormal
+	return m
+}
+
 func cursorUp(cursor int) int {
 	if cursor > 0 {
 		return cursor - 1
@@ -109,9 +122,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.FinishError = true
 					return m, nil
 				}
-				m.exitMessage = desc + " was deleted"
-				m.FinishError = false
-				return m, nil
+				return returnToMenu(m, desc+" was deleted"), nil
 			}
 			if m.modes[LIST_CERTS].selectedCert.Certificate != nil && m.modes[LIST_CERTS].Step >= 1 {
 				exitmsg, err := deleteCertificate(m.ctx, m.modes[LIST_CERTS].selectedCert)
@@ -120,9 +131,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.FinishError = true
 					return m, nil
 				}
-				m.exitMessage = exitmsg
-				m.FinishError = false
-				return m, nil
+				return returnToMenu(m, exitmsg), nil
 			}
 		case "E":
 			if m.modes[LIST].selectedKP != nil && m.modes[LIST].Step >= 1 {

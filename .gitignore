@@ -33,6 +33,9 @@ go.work.sum
 *.swp
 
 *.DER
+*.der
+*.crt
+*.pem
 *.bin
 *.txt
 *.properties

@@ -101,6 +101,9 @@ func HandleViewInit(m model) tea.View {
 		}
 		s += fmt.Sprintf("%s %s\n", cur, m.modes[modeIdx].Name)
 	}
+	if m.statusMsg != "" {
+		s += "\n" + lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Render("✓ "+m.statusMsg)
+	}
 	return tea.NewView(s)
 }
 
