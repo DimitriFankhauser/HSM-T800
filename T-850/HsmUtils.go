@@ -141,6 +141,31 @@ func exportPublicKey(ctx *crypto11.Context, kp crypto11.Signer) (string, error) 
 	return path.Join(wd, filePath), nil
 }
 
+func checkTokenExists(pathToSo, tokenLabel string) bool {
+	p := pkcs11.New(pathToSo)
+	err := p.Initialize()
+	if err != nil && err != pkcs11.Error(pkcs11.CKR_CRYPTOKI_ALREADY_INITIALIZED) {
+		return false
+	}
+	alreadyInitialized := err == pkcs11.Error(pkcs11.CKR_CRYPTOKI_ALREADY_INITIALIZED)
+	defer p.Destroy()
+	if !alreadyInitialized {
+		defer p.Finalize()
+	}
+
+	slots, err := p.GetSlotList(true)
+	if err != nil {
+		return false
+	}
+	for _, s := range slots {
+		info, err := p.GetTokenInfo(s)
+		if err == nil && strings.TrimRight(info.Label, " ") == tokenLabel {
+			return true
+		}
+	}
+	return false
+}
+
 func initializeCtx(m *model) error {
 	ctx, err := crypto11.Configure(&crypto11.Config{
 		Path:       m.pathToSo,

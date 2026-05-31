@@ -59,6 +59,7 @@ func handleInit(msg tea.Msg, m model) (model, tea.Cmd) {
 				}
 				if !checkFileExists(m.pathToSo) {
 					m.errorMsg = "File not found: " + m.pathToSo
+					m.pathToSo = ""
 					m.textInput.Reset()
 					return m, nil
 				}
@@ -76,6 +77,11 @@ func handleInit(msg tea.Msg, m model) (model, tea.Cmd) {
 	case 1:
 		// Auto-advance when --label was supplied on the command line.
 		if m.tokenLabel != "" {
+			if !checkTokenExists(m.pathToSo, m.tokenLabel) {
+				m.exitMessage = fmt.Sprintf("Invalid --label: token '%s' couldn't be found", m.tokenLabel)
+				m.FinishError = true
+				return m, nil
+			}
 			m.textInput.Reset()
 			m.textInput.Placeholder = "Enter PIN"
 			m.textInput.EchoMode = textinput.EchoPassword
@@ -93,6 +99,11 @@ func handleInit(msg tea.Msg, m model) (model, tea.Cmd) {
 				}
 				if len(tokenLabel) == 0 {
 					m.errorMsg = "Token label cannot be empty"
+					m.textInput.Reset()
+					return m, nil
+				}
+				if !checkTokenExists(m.pathToSo, tokenLabel) {
+					m.errorMsg = fmt.Sprintf("Token '%s' couldn't be found", tokenLabel)
 					m.textInput.Reset()
 					return m, nil
 				}
@@ -142,8 +153,9 @@ func handleInit(msg tea.Msg, m model) (model, tea.Cmd) {
 				}
 				m.pin = pin
 				if err := initializeCtx(&m); err != nil {
-					m.exitMessage = err.Error()
-					m.FinishError = true
+					m.errorMsg = err.Error()
+					m.pin = ""
+					m.textInput.Reset()
 					return m, nil
 				}
 				m.errorMsg = ""
