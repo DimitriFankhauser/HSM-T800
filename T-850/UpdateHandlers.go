@@ -332,7 +332,6 @@ var rsaKeyOptions = []struct {
 	label string
 	bits  int
 }{
-	{"2048 bit", 2048},
 	{"3072 bit", 3072},
 	{"4096 bit", 4096},
 }
