@@ -14,7 +14,14 @@ func generatePropertiesForQuarkus(pin string, label string) error {
 	s += "quarkus.http.ssl.certificate.key-store-file-type=pkcs11 \n"
 	s += fmt.Sprintf("quarkus.http.ssl.certificate.key-store-alias=%s \n", label)
 	s += fmt.Sprintf("quarkus.http.ssl.certificate.key-store-password= %s  \n", pin)
-	s += "quarkus.http.insecure-requests=disabled"
+	s += "quarkus.http.insecure-requests=disabled \n"
+
+	s += "#uncomment the following lines for mTLS\n"
+	s += "#quarkus.http.ssl.certificate.trust-store-file=none \n"
+	s += "#quarkus.http.ssl.certificate.trust-store-file-type=PKCS11\n"
+	s += fmt.Sprintf("#quarkus.http.ssl.certificate.trust-store-password=%s \n", pin)
+	s += fmt.Sprintf("#quarkus.http.ssl.certificate.trust-store-cert-alias=%s \n", label)
+	s += "#quarkus.http.ssl.client-auth=REQUIRED\n"
 
 	wd, err := os.Getwd()
 	if err != nil {
